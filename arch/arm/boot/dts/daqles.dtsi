@@ -1,0 +1,105 @@
+#include <dt-bindings/iio/frequency/ad9528.h>
+
+/ {
+	clocks {
+
+	};
+};
+
+&fmc_spi {
+	clk0_ad9528: ad9528@0 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#clock-cells = <1>;
+		compatible = "adi,ad9528";
+
+		//spi-cpol;
+		//spi-cpha;
+		spi-max-frequency = <1000000>;
+		adi,spi-3wire-enable;
+		reg = <0>;
+
+		clock-output-names = "ad9528_out0", "ad9528_out1", "ad9528_out2", "ad9528_out3", "ad9528_out4", "ad9528_out5", "ad9528_out6", "ad9528_out7", "ad9528_out8", "ad9528_out9", "ad9528_out10", "ad9528_out11", "ad9528_out12", "ad9528_out13";
+
+		adi,vcxo-freq = <125000000>;
+
+		/* PLL1 config */
+		adi,ref-mode = <REF_MODE_STAY_ON_REFB>;
+		adi,refa-diff-rcv-enable;
+		adi,refa-r-div = <4>;
+		adi,refb-r-div = <4>;
+		adi,pll1-feedback-src-vcxo;
+		adi,pll1-feedback-div = <4>;
+		adi,osc-in-cmos-neg-inp-enable;
+		adi,pll1-charge-pump-current-nA = <10000>;
+
+		/* PLL2 config */
+		//adi,pll2-ndiv-a-cnt = <0>;
+		adi,pll2-ndiv-b-cnt = <40>;
+		adi,pll2-r1-div = <5>;
+		adi,pll2-vco-diff-m1 = <4>;
+		adi,pll2-n2-div = <40>;
+		adi,pll2-charge-pump-current-nA = <805000>;
+
+		/* SYSREF config */
+		adi,sysref-src = <SYSREF_SRC_INTERNAL>;			// = 125MHz / 10 = 12,5 MHz
+		//adi,sysref-k-div = <12>;						// 44 31,25MHz / 5 = 12,5MHz/2 = 6,25MHz
+
+		adi,rpole2 = <RPOLE2_900_OHM>;
+		adi,rzero = <RZERO_1850_OHM>;
+		adi,cpole1 = <CPOLE1_16_PF>;	
+
+		adi,status-mon-pin0-function-select = <3>; /* PLL2 Locked */
+		adi,status-mon-pin1-function-select = <7>; /* REFA Correct */
+
+		ad9528_0_c12: channel@12 { 		/* 1GHz/2  = 500 MHz*/
+			reg = <12>;
+			adi,extended-name = "ADC_CLK";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <2>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		ad9528_0_c5: channel@5 { 		/* 1GHz/4 = 250 MHz -> device clock = 250/2 = 125 MHz*/
+			reg = <5>;
+			adi,extended-name = "FPGA_CLK";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <4>;
+			adi,signal-source = <SOURCE_VCO>;
+		};
+
+		// SYSREF signals
+		ad9528_0_c8: channel@8 {		// ... MHz
+			reg = <8>;
+			adi,extended-name = "FPGA_SYSREF";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <128>;
+			adi,signal-source = <SOURCE_SYSREF_VCO>;
+		};
+
+		ad9528_0_c9: channel@9 {		// ... MHz
+			reg = <9>;
+			adi,extended-name = "ADC_SYSREF";
+			adi,driver-mode = <DRIVER_MODE_LVDS>;
+			adi,divider-phase = <0>;
+			adi,channel-divider = <128>;
+			adi,signal-source = <SOURCE_SYSREF_VCO>;
+		};
+	};
+	adc0_ad9234: ad9234@1 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		compatible = "adi,ad9234";
+		reg = <1>;
+		spi-max-frequency = <1000000>;
+		spi-cpol;
+		spi-cpha;
+		
+		clocks = <&axi_ad9234_jesd>, <&clk0_ad9528 12>, <&clk0_ad9528 8>;
+		clock-names = "jesd_adc_clk", "adc_clk", "adc_sysref";
+	};
+};

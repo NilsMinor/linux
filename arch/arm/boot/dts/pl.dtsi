@@ -1,0 +1,83 @@
+/*
+ * Nils Minor, project [ DAQLES ]
+ */
+
+
+/ {
+	fpga_axi: fpga-axi@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+		
+		rx_dma: rx-dmac@7c400000 {
+			compatible = "adi,axi-dmac-1.00.a";
+			reg = <0x7c400000 0x10000>;
+			
+			#dma-cells = <1>;
+			interrupts = <0 57 0>;
+			clocks = <&clkc 16>;
+			 
+			adi,channels {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				dma-channel@0 {
+					reg = <0>;
+					adi,source-bus-width = <64>;
+					adi,source-bus-type = <2>;
+					adi,destination-bus-width = <64>;
+					adi,destination-bus-type = <0>;
+				};
+			};
+		};
+		
+		axi_ad9234_core: axi-ad9234@44a10000 {
+			compatible = "xlnx,axi-ad9234-1.00.a";
+			reg = <0x44a10000 0x10000>;
+			dmas = <&rx_dma 0>;
+			dma-names = "rx";
+
+			spibus-connected = <&adc0_ad9234>;
+		};
+		
+		axi_ad9234_jesd: axi-jesd204-rx@44aa0000 {
+			compatible = "adi,axi-jesd204-rx-1.0";
+			reg = <0x44aa0000 0x1000>;
+			
+			interrupt-names = "irq";
+			interrupt-parent = <&intc>;
+			interrupts = <0 59 4>;
+
+			clocks = <&clkc 16>, <&axi_ad9234_xcvr 1>, <&axi_ad9234_xcvr 0>;
+			clock-names = "s_axi_aclk", "device_clk", "lane_clk";
+
+			// LMFC = LaneRate / (10 * K * F)
+			adi,octets-per-frame = <1>;						// F
+			adi,frames-per-multiframe = <32>;				// K
+			adi,converter-resolution = <12>;				// N
+			adi,bits-per-sample = <16>;						// N' (must be multiple of 4)
+			adi,converters-per-device = <2>;				// M
+
+			#clock-cells = <0>;
+			clock-output-names = "jesd_adc_lane_clk";		
+		};
+
+		axi_ad9234_xcvr: axi-adxcvr-rx@44a50000 {
+			compatible = "adi,axi-adxcvr-1.0";
+			reg = <0x44a50000 0x1000>;
+
+			clocks = <&clk0_ad9528 5>;			// 250 MHz
+			clock-names = "conv";
+
+			#clock-cells = <1>;
+			clock-output-names = "adc_gt_clk", "rx_out_clk";
+			
+			adi,sys-clk-select = <0>;							// CPLL setiing (3 for ultrascale)
+    		adi,out-clk-select = <4>;							//
+    		adi,use-lpm-enable;
+    		adi,use-cpll-enable;
+			adi,lanes = <4>;									// 4 jsed lanes								
+		};
+	};
+};
